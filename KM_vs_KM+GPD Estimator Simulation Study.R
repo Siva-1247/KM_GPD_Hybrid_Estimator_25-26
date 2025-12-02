@@ -176,11 +176,11 @@ calc_km_mean <- function(data) {
   }
   
   return(area)
+} 
   
+# Hybrid Mean: KM up to Tm (Max Observed time) + GPD tail beyond Tm
   
-  # Hybrid Mean: KM up to Tm (Max Observed time) + GPD tail beyond Tm
-  
-  calc_hybrid_mean <- function(data, threshold_pct = 0.8) {
+calc_hybrid_mean <- function(data, threshold_pct = 0.8) {
     
     # Check if there is censoring
     if (all(data$event == 1)) {
@@ -210,8 +210,8 @@ calc_km_mean <- function(data) {
   }
   
   
-  # Single simulation function
-  one_sim <- function(n, A, B, k = 1, theta = 3) {
+# Single simulation function
+one_sim <- function(n, A, B, k = 1, theta = 3) {
     data <- generate_data(n, A, B, k, theta)
     true_mean <- k * theta
     
@@ -225,19 +225,39 @@ calc_km_mean <- function(data) {
              km_error = km_error, hybrid_error = hybrid_error))
   }
   
-  # Running parallel simulations
-  n_sims <- 200
-  n_sample <- 500
-  k <- 1
-  theta <- 3
-  true_mean <- k * theta
+# Running parallel simulations
+n_sims <- 200
+n_sample <- 500
+k <- 1
+theta <- 3
+true_mean <- k * theta
   
-  scenarios <- data.frame(
+scenarios <- data.frame(
     name = c("No censoring", "Light (20%)", "Moderate (30%)", "Heavy (50%)"),
     A = c(0.00, 0.10, 0.15, 0.25),
     B = c(0.00, 0.10, 0.15, 0.25)
   )
+
+dataset_base_dir <- "simulation_results/saved_datasets"
+if (!dir.exists(dataset_base_dir)) dir.create(dataset_base_dir)
+
+# Loop over scenarios
+for (i in 1:nrow(scenarios)) {
   
+  scenario_name <- gsub(" ", "_", scenarios$name[i])
+  dataset_dir <- paste0(dataset_base_dir, "/scenario_", i, "_", scenario_name)
+  if (!dir.exists(dataset_dir)) dir.create(dataset_dir)
+  
+  cat("Generating datasets for scenario:", scenarios$name[i], "\n")
+  
+  for (d in 1:5) {
+    # Generate dataset
+    data <- generate_data(n_sample, scenarios$A[i], scenarios$B[i], k, theta)
+    
+    # Save dataset
+    write.csv(data, paste0(dataset_dir, "/dataset_", d, ".csv"), row.names = FALSE)
+  }
+} 
   cat("Running parallel simulations...\n")
   cat("Sample size:", n_sample, "\n")
   cat("Replications:", n_sims, "\n")
@@ -286,23 +306,23 @@ calc_km_mean <- function(data) {
     
     all_raw_results[[i]] <- results_df
     
-    # Save individual scenario CSV
-    filename <- paste0("simulation_results/scenario_", i, "_", 
+# Save individual scenario CSV
+filename <- paste0("simulation_results/scenario_", i, "_", 
                        gsub(" ", "_", scenarios$name[i]), ".csv")
-    write.csv(results_df, filename, row.names = FALSE)
-    cat("  Saved to:", filename, "\n\n")
+  write.csv(results_df, filename, row.names = FALSE)
+  cat("  Saved to:", filename, "\n\n")
   }
   
-  # Combine all results
-  combined_results <- do.call(rbind, all_raw_results)
-  write.csv(combined_results, "simulation_results/all_simulations.csv", 
+# Combine all results
+combined_results <- do.call(rbind, all_raw_results)
+write.csv(combined_results, "simulation_results/all_simulations.csv", 
             row.names = FALSE)
   
-  # Summary statistics
-  cat("\n=== SUMMARY RESULTS ===\n")
-  cat("True mean survival time:", true_mean, "\n\n")
+# Summary statistics
+cat("\n=== SUMMARY RESULTS ===\n")
+cat("True mean survival time:", true_mean, "\n\n")
   
-  summary_table <- data.frame(
+summary_table <- data.frame(
     Scenario = character(),
     A = numeric(),
     B = numeric(),
